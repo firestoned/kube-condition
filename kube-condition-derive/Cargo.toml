@@ -1,0 +1,31 @@
+# Copyright (c) 2025 Erick Bourgeois, firestoned
+# SPDX-License-Identifier: MIT
+
+[package]
+name = "kube-condition-derive"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "Derive macro for mapping errors to Kubernetes status conditions"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+proc-macro2.workspace = true
+quote.workspace = true
+syn.workspace = true
+darling.workspace = true
+
+[dev-dependencies]
+kube-condition = { path = "../kube-condition" }
+thiserror.workspace = true
+trybuild.workspace = true
+k8s-openapi.workspace = true
+kube.workspace = true

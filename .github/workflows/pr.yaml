@@ -1,0 +1,165 @@
+# Copyright (c) 2025 Erick Bourgeois, firestoned
+# SPDX-License-Identifier: MIT
+
+name: Pull Request CI
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  security-events: write
+  pull-requests: write
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  lint:
+    name: Lint (fmt + clippy)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust toolchain
+        uses: firestoned/github-actions/rust/setup-rust-build@v1.1.0
+        with:
+          target: x86_64-unknown-linux-gnu
+
+      - name: Install rustfmt and clippy
+        run: rustup component add rustfmt clippy
+
+      - name: Check formatting
+        run: make fmt
+
+      - name: Run clippy
+        run: make clippy
+
+  build:
+    name: Build All Crates
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build library
+        uses: firestoned/github-actions/rust/build-library@v1.1.0
+        with:
+          workspace: true
+
+  test:
+    name: Test All Crates
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust toolchain
+        uses: firestoned/github-actions/rust/setup-rust-build@v1.1.0
+        with:
+          target: x86_64-unknown-linux-gnu
+
+      - name: Run all tests
+        run: make test
+
+  doc:
+    name: Build Documentation
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust toolchain
+        uses: firestoned/github-actions/rust/setup-rust-build@v1.1.0
+        with:
+          target: x86_64-unknown-linux-gnu
+
+      - name: Build documentation
+        run: make doc
+
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run security scan
+        uses: firestoned/github-actions/rust/security-scan@v1.1.0
+        with:
+          cargo-audit-version: '0.22.0'
+          upload-artifact-name: pr-audit-${{ github.event.pull_request.number }}
+
+  coverage:
+    name: Code Coverage
+    runs-on: ubuntu-latest
+    needs: test
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust toolchain
+        uses: firestoned/github-actions/rust/setup-rust-build@v1.1.0
+        with:
+          target: x86_64-unknown-linux-gnu
+
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-llvm-cov
+
+      - name: Generate coverage report
+        run: cargo llvm-cov --all --lcov --output-path lcov.info
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: lcov.info
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+          verbose: true
+
+      - name: Generate HTML coverage report
+        run: cargo llvm-cov --all --html
+
+      - name: Upload HTML coverage as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report-pr-${{ github.event.pull_request.number }}
+          path: target/llvm-cov/html/
+          retention-days: 7
+
+  sbom:
+    name: Generate SBOM
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust toolchain
+        uses: firestoned/github-actions/rust/setup-rust-build@v1.1.0
+        with:
+          target: x86_64-unknown-linux-gnu
+
+      - name: Generate SBOM
+        uses: firestoned/github-actions/rust/generate-sbom@v1.1.0
+        with:
+          format: json
+
+      - name: Upload SBOM artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-pr-${{ github.event.pull_request.number}}
+          path: '*.cdx.json'
+          retention-days: 7

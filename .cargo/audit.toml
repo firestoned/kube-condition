@@ -1,0 +1,11 @@
+# Copyright (c) 2025 Erick Bourgeois, firestoned
+# SPDX-License-Identifier: MIT
+
+[advisories]
+# Ignored advisories - unmaintained dependencies from kube-rs 0.96
+# These will be resolved when upgrading to kube-rs 2.0
+ignore = [
+    "RUSTSEC-2025-0012",  # backoff is unmaintained (transitive dep from kube-runtime)
+    "RUSTSEC-2024-0384",  # instant is unmaintained (transitive dep from backoff)
+    "RUSTSEC-2025-0134",  # rustls-pemfile is unmaintained (transitive dep from kube-client)
+]
