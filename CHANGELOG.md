@@ -26,6 +26,125 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - README.md: Added comprehensive badges grouped by CI/CD Status, Code Quality, Crates.io, and License & Compliance
 - README.md: Updated all examples to use `condition_type` instead of `type`
 
+## [2025-12-19 16:30] - Upgrade to firestoned/github-actions@v1.1.2
+
+**Author:** Erick Bourgeois
+
+### Changed
+- **All workflows upgraded from v1.1.1 to v1.1.2** with updated action paths:
+  - `.github/workflows/main.yaml`: All actions upgraded to v1.1.2
+  - `.github/workflows/pr.yaml`: All actions upgraded to v1.1.2
+  - `.github/workflows/release.yaml`: All actions upgraded to v1.1.2
+  - `.github/workflows/sbom.yml`: All actions upgraded to v1.1.2
+  - `.github/workflows/security-scan.yaml`: Security scan action upgraded to v1.1.2
+
+### Why
+**Version Upgrade:**
+- Upgraded from v1.1.1 to v1.1.2
+- Contains latest bug fixes and improvements from firestoned/github-actions
+- Maintains all existing functionality with enhanced reliability
+
+### Impact
+- [ ] Breaking change
+- [ ] New feature
+- [x] Bug fix (v1.1.2 upgrade)
+- [ ] Documentation only
+
+## [2025-12-19 16:15] - Fix SBOM Artifact Upload Paths
+
+**Author:** Erick Bourgeois
+
+### Changed
+- **All SBOM upload paths** now use recursive glob patterns to capture SBOM files in subdirectories:
+  - `.github/workflows/sbom.yml`: Changed from `*.cdx.json` to `**/*.cdx.json` and `*.cdx.xml` to `**/*.cdx.xml`
+  - `.github/workflows/main.yaml`: Changed from `*.cdx.json` to `**/*.cdx.json`
+  - `.github/workflows/pr.yaml`: Changed from `*.cdx.json` to `**/*.cdx.json`
+  - `.github/workflows/release.yaml`: Changed from `*.cdx.json` to `**/*.cdx.json`
+  - `.github/workflows/sbom.yml`: Updated SBOM file discovery to use `find . -name "*.cdx.json"` instead of `ls *.cdx.json`
+
+### Why
+**SBOM File Location:**
+- `cargo cyclonedx --all --describe crate` generates SBOM files in individual crate directories
+- For workspace projects, SBOMs are created at: `kube-condition/kube-condition.cdx.json` and `kube-condition-derive/kube-condition-derive.cdx.json`
+- Root-level glob patterns (`*.cdx.json`) don't capture files in subdirectories
+- Recursive glob patterns (`**/*.cdx.json`) correctly find all SBOM files regardless of depth
+
+**Error Before Fix:**
+```
+Error: Unable to download artifact(s): Artifact not found for name: sbom
+Please ensure that your artifact is not expired and the artifact was uploaded using a compatible version of toolkit/upload-artifact.
+```
+
+**Root Cause:**
+- Upload action couldn't find SBOM files because they were in subdirectories
+- Artifact uploads failed silently, creating empty artifacts
+- Download actions failed with "Artifact not found" error
+
+### Impact
+- [ ] Breaking change
+- [ ] New feature
+- [x] Bug fix (SBOM artifact uploads now work correctly)
+- [ ] Documentation only
+
+## [2025-12-19 16:00] - Upgrade to firestoned/github-actions@v1.1.1
+
+**Author:** Erick Bourgeois
+
+### Changed
+- **All workflows upgraded from v1.1.0 to v1.1.1** with updated action paths:
+  - `.github/workflows/main.yaml`: All actions upgraded to v1.1.1
+  - `.github/workflows/pr.yaml`: All actions upgraded to v1.1.1
+  - `.github/workflows/release.yaml`: All actions upgraded to v1.1.1
+  - `.github/workflows/sbom.yml`: All actions upgraded to v1.1.1
+  - `.github/workflows/security-scan.yaml`: Security scan action upgraded to v1.1.1
+
+### Why
+**Version Upgrade:**
+- Upgraded from v1.1.0 to v1.1.1
+- Contains latest bug fixes and improvements from firestoned/github-actions
+- Maintains all existing functionality with enhanced reliability
+
+### Impact
+- [ ] Breaking change
+- [ ] New feature
+- [x] Bug fix (v1.1.1 upgrade)
+- [ ] Documentation only
+
+## [2025-12-19 15:30] - Fix SBOM Generation for Library Crates
+
+**Author:** Erick Bourgeois
+
+### Changed
+- **All SBOM generation workflows** now use `describe: crate` instead of `describe: binaries`:
+  - `.github/workflows/sbom.yml`: Changed from `describe: binaries` to `describe: crate`
+  - `.github/workflows/main.yaml`: Added `describe: crate` parameter
+  - `.github/workflows/pr.yaml`: Added `describe: crate` parameter
+  - `.github/workflows/release.yaml`: Added `describe: crate` parameter
+
+### Why
+**Library Crate SBOM Requirements:**
+- Library crates do not produce binary artifacts
+- `cargo cyclonedx --describe binaries` produces no output for libraries (only works for bin/cdylib targets)
+- `describe: crate` describes the entire crate with all Cargo targets as subcomponents (default behavior)
+- This ensures SBOMs are correctly generated for both `kube-condition` and `kube-condition-derive` library crates
+
+**cargo-cyclonedx Describe Options:**
+- `crate` (default): Describe entire crate in single SBOM with targets as subcomponents
+- `binaries`: Separate SBOM per binary (bin, cdylib) - ignores lib crates
+- `all-cargo-targets`: Separate SBOM per Cargo target (including rlib)
+
+**Why `crate` for Library Projects:**
+- Provides comprehensive view of the entire crate and its dependencies
+- Works for both library and binary crates
+- Single SBOM file per crate for easier management
+- Includes all targets (lib, proc-macro, etc.) as subcomponents
+
+### Impact
+- [ ] Breaking change
+- [x] Bug fix (SBOM generation now works for library crates)
+- [ ] New feature
+- [ ] Documentation only
+
 ## [2025-12-19 14:56] - Upgrade to firestoned/github-actions@v1.1.0 with build-library Action
 
 **Author:** Erick Bourgeois

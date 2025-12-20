@@ -25,23 +25,23 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Rust toolchain
-        uses: firestoned/github-actions/rust/setup-rust-build@v1.1.0
+        uses: firestoned/github-actions/rust/setup-rust-build@v1.1.2
         with:
           target: x86_64-unknown-linux-gnu
 
       - name: Generate SBOM (JSON and XML)
-        uses: firestoned/github-actions/rust/generate-sbom@v1.1.0
+        uses: firestoned/github-actions/rust/generate-sbom@v1.1.2
         with:
           format: both
-          describe: binaries
+          describe: crate
 
       - name: Upload SBOM artifacts
         uses: actions/upload-artifact@v4
         with:
           name: sbom
           path: |
-            *.cdx.json
-            *.cdx.xml
+            **/*.cdx.json
+            **/*.cdx.xml
           retention-days: 90
 
       # REMOVED: Auto-commit SBOM to repository
@@ -64,7 +64,7 @@ jobs:
       - name: Verify SBOM contains dependencies
         run: |
           # Find the JSON SBOM file (cargo-cyclonedx default naming)
-          SBOM_FILE=$(ls *.cdx.json | head -1)
+          SBOM_FILE=$(find . -name "*.cdx.json" -type f | head -1)
 
           if [ -z "$SBOM_FILE" ]; then
             echo "ERROR: No SBOM JSON file found"
@@ -90,7 +90,7 @@ jobs:
       - name: Check for known vulnerabilities in SBOM
         run: |
           # Find the JSON SBOM file
-          SBOM_FILE=$(ls *.cdx.json | head -1)
+          SBOM_FILE=$(find . -name "*.cdx.json" -type f | head -1)
 
           # Install grype for vulnerability scanning
           curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
