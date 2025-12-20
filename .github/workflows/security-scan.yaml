@@ -1,0 +1,148 @@
+# Copyright (c) 2025 Erick Bourgeois, firestoned
+# SPDX-License-Identifier: MIT
+
+name: Scheduled Security Scan
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Daily at midnight UTC
+  workflow_dispatch:  # Allow manual trigger
+
+permissions:
+  contents: read
+  security-events: write
+  issues: write
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  cargo-audit:
+    name: Scan Rust Dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run security scan
+        id: audit
+        continue-on-error: true
+        uses: firestoned/github-actions/rust/security-scan@v1.1.0
+        with:
+          cargo-audit-version: '0.22.0'
+          upload-artifact-name: scheduled-cargo-audit-${{ github.run_number }}
+
+      - name: Parse audit results
+        id: parse
+        if: always()
+        run: |
+          if [ -f audit-report.json ]; then
+            VULN_COUNT=$(jq '.vulnerabilities.count' audit-report.json || echo "0")
+            echo "vuln_count=${VULN_COUNT}" >> $GITHUB_OUTPUT
+
+            # Extract vulnerability details
+            if [ "$VULN_COUNT" -gt "0" ]; then
+              echo "has_vulnerabilities=true" >> $GITHUB_OUTPUT
+            else
+              echo "has_vulnerabilities=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "vuln_count=0" >> $GITHUB_OUTPUT
+            echo "has_vulnerabilities=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create GitHub issue for vulnerabilities
+        if: steps.parse.outputs.has_vulnerabilities == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = JSON.parse(fs.readFileSync('audit-report.json', 'utf8'));
+            const vulns = report.vulnerabilities.list || [];
+
+            // Group by severity
+            const critical = vulns.filter(v => v.advisory.severity === 'critical');
+            const high = vulns.filter(v => v.advisory.severity === 'high');
+            const medium = vulns.filter(v => v.advisory.severity === 'medium');
+            const low = vulns.filter(v => v.advisory.severity === 'low');
+
+            const formatVulns = (vulnList) => {
+              return vulnList.map(v => {
+                const adv = v.advisory;
+                return `- **${adv.id}**: ${v.package.name}@${v.package.version}
+              - **Title**: ${adv.title}
+              - **Severity**: ${adv.severity.toUpperCase()}
+              - **Description**: ${adv.description}
+              - **Solution**: ${adv.solution || 'Update to latest version'}
+              - **More Info**: ${adv.url}`;
+              }).join('\n\n');
+            };
+
+            let body = `## 🚨 Security Vulnerabilities Detected in Dependencies
+
+            **Scan Date**: ${new Date().toISOString()}
+            **Total Vulnerabilities**: ${vulns.length}
+
+            ### Summary
+            - 🔴 **CRITICAL**: ${critical.length}
+            - 🟠 **HIGH**: ${high.length}
+            - 🟡 **MEDIUM**: ${medium.length}
+            - 🔵 **LOW**: ${low.length}
+
+            ---
+
+            `;
+
+            if (critical.length > 0) {
+              body += `### 🔴 CRITICAL Vulnerabilities (SLA: 24 hours)\n\n${formatVulns(critical)}\n\n---\n\n`;
+            }
+
+            if (high.length > 0) {
+              body += `### 🟠 HIGH Vulnerabilities (SLA: 7 days)\n\n${formatVulns(high)}\n\n---\n\n`;
+            }
+
+            if (medium.length > 0) {
+              body += `### 🟡 MEDIUM Vulnerabilities (SLA: 30 days)\n\n${formatVulns(medium)}\n\n---\n\n`;
+            }
+
+            if (low.length > 0) {
+              body += `### 🔵 LOW Vulnerabilities (SLA: 90 days)\n\n${formatVulns(low)}\n\n`;
+            }
+
+            body += `\n---\n\n**Action Required**: Review and remediate vulnerabilities within SLA.\n**Compliance**: PCI-DSS 6.2, SOX IT Controls, Basel III Cyber Risk\n**Documentation**: See \`docs/security/VULNERABILITY_MANAGEMENT.md\`\n`;
+
+            // Check if similar issue already exists
+            const existingIssues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: 'security,vulnerability,automated',
+              state: 'open'
+            });
+
+            const todayStr = new Date().toISOString().split('T')[0];
+            const existingIssue = existingIssues.data.find(i =>
+              i.title.includes('Vulnerabilities detected') &&
+              i.title.includes(todayStr)
+            );
+
+            if (existingIssue) {
+              // Update existing issue
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existingIssue.number,
+                body: `## Updated Scan Results\n\n${body}`
+              });
+              console.log(`Updated existing issue #${existingIssue.number}`);
+            } else {
+              // Create new issue
+              const issue = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: `[SECURITY] Vulnerabilities detected in dependencies (${todayStr})`,
+                body: body,
+                labels: ['security', 'vulnerability', 'automated']
+              });
+              console.log(`Created new issue #${issue.data.number}`);
+            }

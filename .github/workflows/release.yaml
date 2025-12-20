@@ -1,0 +1,240 @@
+# Copyright (c) 2025 Erick Bourgeois, firestoned
+# SPDX-License-Identifier: MIT
+
+name: Release
+
+on:
+  release:
+    types:
+      - published
+
+permissions:
+  contents: write
+  id-token: write  # For keyless signing with Cosign
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  extract-version:
+    name: Extract Version from Tag
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag_name: ${{ steps.version.outputs.tag_name }}
+    steps:
+      - name: Extract version from tag
+        id: version
+        run: |
+          TAG_NAME="${{ github.event.release.tag_name }}"
+          VERSION="${TAG_NAME#v}"
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "tag_name=${TAG_NAME}" >> $GITHUB_OUTPUT
+          echo "Extracted version: ${VERSION} from tag: ${TAG_NAME}"
+
+  package-crates:
+    name: Package Crates
+    runs-on: ubuntu-latest
+    needs: extract-version
+    strategy:
+      matrix:
+        crate:
+          - name: kube-condition-derive
+            path: kube-condition-derive
+          - name: kube-condition
+            path: kube-condition
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Update Cargo.toml version
+        run: |
+          sed -i 's/^version = ".*"/version = "${{ needs.extract-version.outputs.version }}"/' ${{ matrix.crate.path }}/Cargo.toml
+          echo "Updated ${{ matrix.crate.path }}/Cargo.toml to version ${{ needs.extract-version.outputs.version }}"
+          grep '^version = ' ${{ matrix.crate.path }}/Cargo.toml
+
+      - name: Setup Rust toolchain
+        uses: firestoned/github-actions/rust/setup-rust-build@v1.1.0
+        with:
+          target: x86_64-unknown-linux-gnu
+
+      - name: Package crate
+        run: |
+          cd ${{ matrix.crate.path }}
+          cargo package --verbose --allow-dirty
+
+      - name: Generate SBOM for crate
+        uses: firestoned/github-actions/rust/generate-sbom@v1.1.0
+        with:
+          format: json
+
+      - name: Upload package and SBOM artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.crate.name }}-package
+          path: |
+            target/package/${{ matrix.crate.name}}-*.crate
+            *.cdx.json
+
+  sign-artifacts:
+    name: Sign Crate Packages and SBOMs
+    runs-on: ubuntu-latest
+    needs: [extract-version, package-crates]
+    permissions:
+      id-token: write  # For keyless signing with Cosign
+    strategy:
+      matrix:
+        crate:
+          - name: kube-condition-derive
+          - name: kube-condition
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download package artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.crate.name }}-package
+          path: ./artifacts/${{ matrix.crate.name }}
+
+      - name: Sign crate package with Cosign
+        uses: firestoned/github-actions/security/cosign-sign@v1.1.0
+        with:
+          artifact-path: ./artifacts/${{ matrix.crate.name }}/${{ matrix.crate.name }}-${{ needs.extract-version.outputs.version }}.crate
+
+      - name: Sign SBOM with Cosign
+        uses: firestoned/github-actions/security/cosign-sign@v1.1.0
+        with:
+          artifact-path: ./artifacts/${{ matrix.crate.name }}/${{ matrix.crate.name }}.cdx.json
+
+      - name: Upload signed artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.crate.name }}-signed
+          path: |
+            ./artifacts/${{ matrix.crate.name }}/*.crate
+            ./artifacts/${{ matrix.crate.name }}/*.crate.bundle
+            ./artifacts/${{ matrix.crate.name }}/*.cdx.json
+            ./artifacts/${{ matrix.crate.name }}/*.cdx.json.bundle
+
+  publish-crates:
+    name: Publish to crates.io
+    runs-on: ubuntu-latest
+    needs: [extract-version, sign-artifacts]
+    # Publish crates in dependency order
+    strategy:
+      max-parallel: 1  # Ensure sequential publishing
+      matrix:
+        crate:
+          - name: kube-condition-derive
+            path: kube-condition-derive
+          - name: kube-condition
+            path: kube-condition
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Update Cargo.toml version
+        run: |
+          sed -i 's/^version = ".*"/version = "${{ needs.extract-version.outputs.version }}"/' ${{ matrix.crate.path }}/Cargo.toml
+          echo "Updated ${{ matrix.crate.path }}/Cargo.toml to version ${{ needs.extract-version.outputs.version }}"
+          grep '^version = ' ${{ matrix.crate.path }}/Cargo.toml
+
+      - name: Setup Rust toolchain
+        uses: firestoned/github-actions/rust/setup-rust-build@v1.1.0
+        with:
+          target: x86_64-unknown-linux-gnu
+
+      - name: Publish ${{ matrix.crate.name }} to crates.io
+        run: |
+          cd ${{ matrix.crate.path }}
+          cargo publish --token ${{ secrets.CARGO_REGISTRY_TOKEN }} --allow-dirty
+
+      - name: Wait for crate to be available on crates.io
+        if: matrix.crate.name == 'kube-condition-derive'
+        run: |
+          echo "Waiting 60 seconds for kube-condition-derive to be indexed on crates.io..."
+          sleep 60
+
+  upload-release-assets:
+    name: Upload Release Assets
+    runs-on: ubuntu-latest
+    needs: [extract-version, sign-artifacts]
+    permissions:
+      contents: write
+    steps:
+      - name: Download all signed artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: '*-signed'
+          path: ./artifacts
+
+      - name: Organize release artifacts
+        run: |
+          cd artifacts
+          mkdir -p release sboms signatures
+
+          # Organize crate files and signatures
+          for dir in *-signed; do
+            if [ -d "$dir" ]; then
+              crate_name="${dir%-signed}"
+              echo "Processing $crate_name..."
+
+              # Copy .crate file
+              if compgen -G "$dir/*.crate" > /dev/null; then
+                cp "$dir"/*.crate release/
+              fi
+
+              # Copy .crate signature bundle
+              if compgen -G "$dir/*.crate.bundle" > /dev/null; then
+                cp "$dir"/*.crate.bundle signatures/
+              fi
+
+              # Copy SBOM
+              if compgen -G "$dir/*.cdx.json" > /dev/null; then
+                cp "$dir"/*.cdx.json "sboms/${crate_name}-sbom.json"
+              fi
+
+              # Copy SBOM signature bundle
+              if compgen -G "$dir/*.cdx.json.bundle" > /dev/null; then
+                cp "$dir"/*.cdx.json.bundle "signatures/${crate_name}-sbom.json.bundle"
+              fi
+            fi
+          done
+
+          # Generate SHA256 checksums
+          cd release
+          sha256sum *.crate > checksums.sha256
+          cd ../sboms
+          sha256sum *.json >> ../release/checksums.sha256
+          cd ../signatures
+          sha256sum *.bundle >> ../release/checksums.sha256
+
+          echo "Release artifacts prepared:"
+          ls -lh ../release/
+          ls -lh ../sboms/
+          ls -lh ../signatures/
+
+      - name: Upload release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/release/*.crate
+            artifacts/sboms/*.json
+            artifacts/signatures/*.bundle
+            artifacts/release/checksums.sha256
+
+  security:
+    name: Security Vulnerability Scan
+    runs-on: ubuntu-latest
+    needs: extract-version
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run security scan
+        uses: firestoned/github-actions/rust/security-scan@v1.1.0
+        with:
+          cargo-audit-version: '0.22.0'
+          upload-artifact-name: release-audit-${{ needs.extract-version.outputs.version }}

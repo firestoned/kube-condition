@@ -1,0 +1,41 @@
+# Rust
+/target/
+**/*.rs.bk
+*.pdb
+Cargo.lock
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Documentation
+/docs/book/
+
+# Examples
+/examples/*/target/
+
+# Test artifacts
+*.profraw
+*.profdata
+
+# Mac
+.DS_Store
+
+# Bindy directory (we're building kube-condition standalone)
+/bindy/
+
+# SBOM files (generated, not committed)
+*.cdx.json
+*.cdx.xml
+*.spdx.json
+*.sbom
+audit-report.json
+
+# Cosign signature bundles (generated during signing)
+*.bundle
+*.sig
+*.cert

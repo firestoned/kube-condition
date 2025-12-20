@@ -1,0 +1,32 @@
+# Copyright (c) 2025 Erick Bourgeois, firestoned
+# SPDX-License-Identifier: MIT
+
+[package]
+name = "kube-condition"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "Rust library for mapping errors to Kubernetes status conditions in operators"
+
+[dependencies]
+kube.workspace = true
+k8s-openapi.workspace = true
+tokio.workspace = true
+async-trait.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+# Re-export the derive macro
+kube-condition-derive = { path = "../kube-condition-derive", optional = true }
+
+[features]
+default = ["derive"]
+derive = ["kube-condition-derive"]
