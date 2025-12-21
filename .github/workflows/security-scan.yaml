@@ -28,7 +28,7 @@ jobs:
       - name: Run security scan
         id: audit
         continue-on-error: true
-        uses: firestoned/github-actions/rust/security-scan@v1.1.2
+        uses: firestoned/github-actions/rust/security-scan@v1.2.4
         with:
           cargo-audit-version: '0.22.0'
           upload-artifact-name: scheduled-cargo-audit-${{ github.run_number }}

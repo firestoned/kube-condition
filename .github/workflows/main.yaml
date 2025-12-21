@@ -25,44 +25,69 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Rust toolchain
-        uses: firestoned/github-actions/rust/setup-rust-build@v1.1.2
+        uses: firestoned/github-actions/rust/setup-rust-build@v1.2.4
         with:
           target: x86_64-unknown-linux-gnu
 
-      - name: Install rustfmt and clippy
-        run: rustup component add rustfmt clippy
-
-      - name: Check formatting
-        run: make fmt
-
-      - name: Run clippy
-        run: make clippy
-
-  build:
-    name: Build All Crates
-    runs-on: ubuntu-latest
-    needs: lint
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Build library
-        uses: firestoned/github-actions/rust/build-library@v1.1.2
+      - name: Run linters
+        uses: firestoned/github-actions/rust/lint@v1.2.4
         with:
           workspace: true
+          clippy-args: '-- -D warnings -W clippy::pedantic -A clippy::module_name_repetitions'
 
-  test:
-    name: Test All Crates
-    runs-on: ubuntu-latest
-    needs: build
+  build:
+    name: Build - ${{ matrix.platform.name }}
+    runs-on: ${{ matrix.platform.os }}
+    needs: lint
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - name: Linux x86_64
+            arch: linux-x86_64
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - name: Linux ARM64
+            arch: linux-arm64
+            os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Setup Rust toolchain
-        uses: firestoned/github-actions/rust/setup-rust-build@v1.1.2
+        uses: firestoned/github-actions/rust/setup-rust-build@v1.2.4
         with:
-          target: x86_64-unknown-linux-gnu
+          target: ${{ matrix.platform.target }}
+
+      - name: Build library
+        uses: firestoned/github-actions/rust/build-library@v1.2.4
+        with:
+          workspace: true
+
+  test:
+    name: Test All Crates (${{ matrix.platform.name }})
+    runs-on: ${{ matrix.platform.os }}
+    needs: build
+    strategy:
+      matrix:
+        platform:
+          - name: Linux x86_64
+            arch: linux-x86_64
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - name: Linux ARM64
+            arch: linux-arm64
+            os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust toolchain
+        uses: firestoned/github-actions/rust/setup-rust-build@v1.2.4
+        with:
+          target: ${{ matrix.platform.target }}
 
       - name: Run all tests
         run: make test
@@ -76,7 +101,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Rust toolchain
-        uses: firestoned/github-actions/rust/setup-rust-build@v1.1.2
+        uses: firestoned/github-actions/rust/setup-rust-build@v1.2.4
         with:
           target: x86_64-unknown-linux-gnu
 
@@ -92,13 +117,13 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run security scan
-        uses: firestoned/github-actions/rust/security-scan@v1.1.2
+        uses: firestoned/github-actions/rust/security-scan@v1.2.4
         with:
           cargo-audit-version: '0.22.0'
           upload-artifact-name: main-audit-${{ github.run_number }}
 
   coverage:
-    name: Code Coverage
+    name: Code Coverage (linux-x86_64)
     runs-on: ubuntu-latest
     needs: test
     steps:
@@ -106,7 +131,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Rust toolchain
-        uses: firestoned/github-actions/rust/setup-rust-build@v1.1.2
+        uses: firestoned/github-actions/rust/setup-rust-build@v1.2.4
         with:
           target: x86_64-unknown-linux-gnu
 
@@ -145,15 +170,16 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Rust toolchain
-        uses: firestoned/github-actions/rust/setup-rust-build@v1.1.2
+        uses: firestoned/github-actions/rust/setup-rust-build@v1.2.4
         with:
           target: x86_64-unknown-linux-gnu
 
       - name: Generate SBOM
-        uses: firestoned/github-actions/rust/generate-sbom@v1.1.2
+        uses: firestoned/github-actions/rust/generate-sbom@v1.2.4
         with:
           format: json
           describe: crate
+          workspace: true
 
       - name: Upload SBOM artifacts
         uses: actions/upload-artifact@v4

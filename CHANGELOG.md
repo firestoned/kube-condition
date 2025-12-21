@@ -26,6 +26,234 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - README.md: Added comprehensive badges grouped by CI/CD Status, Code Quality, Crates.io, and License & Compliance
 - README.md: Updated all examples to use `condition_type` instead of `type`
 
+## [2025-12-21 12:15] - Add Multi-Architecture Testing to Main Workflow
+
+**Author:** Erick Bourgeois
+
+### Changed
+- `.github/workflows/main.yaml`: Added matrix strategy to build and test jobs for both linux-x86_64 and linux-arm64 architectures
+- Build job now runs on both `ubuntu-latest` (linux-x86_64) and `ubuntu-latest` (linux-arm64)
+- Test job now runs on both `ubuntu-latest` (linux-x86_64) and `ubuntu-latest` (linux-arm64)
+- Coverage job clarified to run only on linux-x86_64 platform
+
+### Why
+**Cross-Platform Compatibility:**
+- Ensure library works correctly on both x86-64 and ARM64 architectures in main branch CI
+- Maintain consistency with PR workflow multi-architecture testing
+- Catch architecture-specific bugs early before merging to main
+- Provide confidence for users deploying on ARM64 Kubernetes clusters (e.g., AWS Graviton, Raspberry Pi clusters)
+
+### Impact
+- [ ] Breaking change
+- [x] New feature
+- [ ] Bug fix
+- [ ] Documentation only
+
+## [2025-12-21 12:00] - Upgrade GitHub Actions to v1.2.4
+
+**Author:** Erick Bourgeois
+
+### Changed
+- Upgraded all `firestoned/github-actions` references from v1.2.3 to v1.2.4 across all workflows (29 references)
+- Updated workflows: pr.yaml, main.yaml, release.yaml, sbom.yml, security-scan.yaml
+
+### Why
+**Version Upgrade:**
+- Incorporate latest fixes and improvements from firestoned/github-actions
+- Includes the SBOM generation target directory check fix
+- Maintain consistency across all workflow files
+
+### Impact
+- [ ] Breaking change
+- [ ] New feature
+- [x] Bug fix
+- [ ] Documentation only
+
+## [2025-12-21 11:45] - Upgrade GitHub Actions to v1.2.3
+
+**Author:** Erick Bourgeois
+
+### Changed
+- Upgraded all `firestoned/github-actions` references from v1.2.2 to v1.2.3 across all workflows (29 references)
+- Updated workflows: pr.yaml, main.yaml, release.yaml, sbom.yml, security-scan.yaml
+
+### Why
+**Version Upgrade:**
+- Incorporate latest fixes and improvements from firestoned/github-actions
+- Includes the SBOM generation exit code fix (compgen vs ls)
+- Maintain consistency across all workflow files
+
+### Impact
+- [ ] Breaking change
+- [ ] New feature
+- [x] Bug fix
+- [ ] Documentation only
+
+## [2025-12-21 11:30] - Fix SBOM Generation Script Exit Code
+
+**Author:** Erick Bourgeois
+
+### Changed
+- Fixed `firestoned/github-actions/rust/generate-sbom` action to use `compgen` instead of `ls` for checking SBOM file existence
+- Added directory existence check before running `find target` in summary count section
+- This prevents bash from exiting with code 1 when iterating through workspace directories or when target directory doesn't exist
+
+### Why
+**SBOM Generation Exit Code Fix:**
+- The generate-sbom action was successfully generating SBOMs but failing with exit code 1
+- **Issue 1**: When iterating through workspace Cargo.toml files, the script checked the root workspace directory. The root directory doesn't contain SBOM files (they're in subdirectories), so `ls` returned non-zero
+- **Issue 2**: The summary count section runs `find target` which fails if the target directory doesn't exist (e.g., after cargo package)
+- With bash running in `-e -o pipefail` mode, these failures caused the script to exit with error code 1
+- **Fix 1**: Switched to `compgen -G` which properly checks file existence without causing exit code issues
+- **Fix 2**: Added `if [ -d "target" ]` check before attempting to find SBOMs in target directory
+
+### Impact
+- [ ] Breaking change
+- [ ] New feature
+- [x] Bug fix
+- [ ] Documentation only
+
+## [2025-12-21 11:15] - Fix SBOM Generation Workspace Configuration
+
+**Author:** Erick Bourgeois
+
+### Changed
+- `.github/workflows/pr.yaml`: Added `workspace: true` to SBOM generation step
+- `.github/workflows/main.yaml`: Added `workspace: true` to SBOM generation step
+- `.github/workflows/sbom.yml`: Added `workspace: true` to SBOM generation step
+- `.github/workflows/release.yaml`: Added `workspace: true` to SBOM generation step
+
+### Why
+**SBOM Generation Fix:**
+- The generate-sbom action was failing because it defaulted to `workspace: false` but still used `--all` flag
+- This caused cargo-cyclonedx to generate SBOMs in individual crate directories
+- The verification step only checked the root directory, causing a mismatch
+- Explicitly setting `workspace: true` ensures the action correctly searches all crate directories for generated SBOMs
+
+### Impact
+- [ ] Breaking change
+- [ ] New feature
+- [x] Bug fix
+- [ ] Documentation only
+
+## [2025-12-21 11:00] - Add Multi-Architecture Testing to PR Workflow
+
+**Author:** Erick Bourgeois
+
+### Changed
+- `.github/workflows/pr.yaml`: Added matrix strategy to build and test jobs for both linux-x86_64 and linux-arm64 architectures
+- Build job now runs on both `ubuntu-latest` (linux-x86_64) and `ubuntu-24.04-arm64` (linux-arm64)
+- Test job now runs on both `ubuntu-latest` (linux-x86_64) and `ubuntu-24.04-arm64` (linux-arm64)
+- Coverage job clarified to run only on linux-x86_64 platform
+
+### Why
+**Cross-Platform Compatibility:**
+- Ensure library works correctly on both x86-64 and ARM64 architectures
+- Catch architecture-specific bugs early in the PR review process
+- Provide confidence for users deploying on ARM64 Kubernetes clusters (e.g., AWS Graviton, Raspberry Pi clusters)
+
+### Impact
+- [ ] Breaking change
+- [x] New feature
+- [ ] Bug fix
+- [ ] Documentation only
+
+## [2025-12-20 10:50] - Fix Code Formatting
+
+**Author:** Erick Bourgeois
+
+### Changed
+- `kube-condition-derive/src/lib.rs`: Applied rustfmt formatting to closure definition (lines 97-104)
+- `kube-condition-derive/tests/integration.rs`: Applied rustfmt formatting to struct initialization (line 129)
+
+### Why
+**CI Compliance:**
+- Fix formatting issues detected by rust/lint composite action
+- Ensure code passes `cargo fmt --all --check` in CI workflows
+- Maintain consistent code style across the project
+
+### Impact
+- [ ] Breaking change
+- [ ] New feature
+- [ ] Bug fix
+- [x] Documentation only
+
+## [2025-12-20 10:45] - Migrate to rust/lint Composite Action
+
+**Author:** Erick Bourgeois
+
+### Changed
+- `.github/workflows/main.yaml`: Replaced manual lint steps with `firestoned/github-actions/rust/lint@v1.2.2`
+  - Removed manual `rustup component add rustfmt clippy` step
+  - Removed `make fmt` and `make clippy` commands
+  - Now uses centralized lint action with workspace support
+  - Added pedantic clippy lints with exception for module_name_repetitions
+- `.github/workflows/pr.yaml`: Applied same lint action migration
+  - Consistent linting approach across all workflows
+  - Simplified workflow configuration
+
+### Why
+**Standardization and Maintainability:**
+- Use centralized, tested lint logic from firestoned/github-actions
+- Eliminate duplicate Makefile-based lint commands in workflows
+- Leverage composite action features (workspace support, configurable clippy args)
+- Maintain consistency across all firestoned projects
+- Easier to update linting rules globally
+
+### Impact
+- [ ] Breaking change
+- [ ] New feature
+- [x] Bug fix
+- [ ] Documentation only
+
+## [2025-12-20 10:30] - Upgrade to firestoned/github-actions@v1.2.2
+
+**Author:** Erick Bourgeois
+
+### Changed
+- All GitHub Actions workflows upgraded from `firestoned/github-actions@v1.2.0` to `@v1.2.2`
+  - `.github/workflows/main.yaml`: 8 action references updated
+  - `.github/workflows/pr.yaml`: 8 action references updated
+  - `.github/workflows/release.yaml`: 6 action references updated
+  - `.github/workflows/sbom.yml`: 2 action references updated
+  - `.github/workflows/security-scan.yaml`: 1 action reference updated
+
+### Why
+**Stay Current with Latest Improvements:**
+- Benefit from latest bug fixes and improvements in the centralized actions repository
+- Maintain consistency across all firestoned projects
+- Ensure compatibility with latest composite action features
+
+### Impact
+- [ ] Breaking change
+- [ ] New feature
+- [ ] Bug fix
+- [x] Documentation only
+
+## [2025-12-20 10:15] - Upgrade to firestoned/github-actions@v1.2.0
+
+**Author:** Erick Bourgeois
+
+### Changed
+- All GitHub Actions workflows upgraded from `firestoned/github-actions@v1.1.2` to `@v1.2.0`
+  - `.github/workflows/main.yaml`: 8 action references updated
+  - `.github/workflows/pr.yaml`: 8 action references updated
+  - `.github/workflows/release.yaml`: 6 action references updated
+  - `.github/workflows/sbom.yml`: 2 action references updated
+  - `.github/workflows/security-scan.yaml`: 1 action reference updated
+
+### Why
+**Stay Current with Latest Improvements:**
+- Benefit from latest bug fixes and improvements in the centralized actions repository
+- Maintain consistency across all firestoned projects
+- Ensure compatibility with latest composite action features
+
+### Impact
+- [ ] Breaking change
+- [ ] New feature
+- [ ] Bug fix
+- [x] Documentation only
+
 ## [2025-12-20 09:30] - Migrate release.yaml to Use Reusable Composite Action
 
 **Author:** Erick Bourgeois

@@ -94,13 +94,14 @@ pub fn derive_status_condition(input: TokenStream) -> TokenStream {
     };
 
     // Helper function to generate the correct pattern for a variant
-    let generate_pattern = |variant_ident: &syn::Ident, fields: &Fields| -> proc_macro2::TokenStream {
-        match fields {
-            Fields::Named(_) => quote! { Self::#variant_ident { .. } },
-            Fields::Unnamed(_) => quote! { Self::#variant_ident(..) },
-            Fields::Unit => quote! { Self::#variant_ident },
-        }
-    };
+    let generate_pattern =
+        |variant_ident: &syn::Ident, fields: &Fields| -> proc_macro2::TokenStream {
+            match fields {
+                Fields::Named(_) => quote! { Self::#variant_ident { .. } },
+                Fields::Unnamed(_) => quote! { Self::#variant_ident(..) },
+                Fields::Unit => quote! { Self::#variant_ident },
+            }
+        };
 
     // Generate match arms for to_condition()
     let condition_arms = variants.iter().zip(syn_variants.iter()).map(|(v, syn_v)| {
