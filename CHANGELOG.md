@@ -26,6 +26,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - README.md: Added comprehensive badges grouped by CI/CD Status, Code Quality, Crates.io, and License & Compliance
 - README.md: Updated all examples to use `condition_type` instead of `type`
 
+## [2025-12-20 09:30] - Migrate release.yaml to Use Reusable Composite Action
+
+**Author:** Erick Bourgeois
+
+### Changed
+- `.github/workflows/release.yaml`: Replaced manual version extraction script with `firestoned/github-actions/versioning/extract-version@v1.1.2` composite action
+  - Removed manual bash script for extracting version from tag
+  - Removed incorrect Cargo.toml update step from extract-version job (was trying to reference job outputs from within same job)
+  - Updated output reference from `tag_name` to `tag-name` (hyphenated) to match composite action output format
+  - Simplified extract-version job to use standardized version extraction logic
+  - Added workspace version update step in both `package-crates` and `publish-crates` jobs to update root `Cargo.toml`
+  - Changed version update from individual crate `Cargo.toml` files to workspace root `Cargo.toml` (workspace inheritance pattern)
+
+### Why
+**Consistency and Correctness:**
+- Uses the same version extraction logic across all firestoned projects
+- Eliminates workflow-specific bash scripting in favor of tested composite actions
+- Fixes incorrect self-referencing of job outputs (was using `needs.extract-version.outputs.version` within the extract-version job itself)
+- Properly updates workspace version in root `Cargo.toml` which propagates to all crates via `version.workspace = true`
+- Follows the DRY principle for GitHub Actions workflows
+
+### Impact
+- [ ] Breaking change
+- [ ] New feature
+- [x] Bug fix
+- [ ] Documentation only
+
+## [2025-12-19 16:45] - Enhanced README Badge Organization
+
+**Author:** Erick Bourgeois
+
+### Changed
+- **README.md badge organization** restructured to match firestoned/github-actions format:
+  - Added "Project Status" section with License, GitHub Release, Crates.io, Downloads, and Last Commit badges
+  - Reorganized "CI/CD Status" section for better clarity
+  - Renamed "Code Quality" to "Code Quality & Testing" with improved badge selection
+  - Added "Technology & Compatibility" section with Kubernetes, Rust, kube-rs, and Proc Macro badges
+  - Enhanced "Security & Compliance" section with SPDX, SBOM, Cosign, and Security Audit badges
+  - Added "Community & Support" section with Issues, PRs, Contributors, and Stars badges
+  - Added project tagline: "Type-safe Kubernetes status conditions for Rust operators"
+  - Updated description to emphasize production-readiness and supply chain security
+
+### Why
+**Improved Project Presentation:**
+- Consistent badge organization across firestoned projects
+- Better categorization makes it easier to find relevant information
+- Technology badges clearly communicate dependencies and compatibility
+- Community badges encourage engagement and contributions
+- Enhanced visibility of security and compliance features
+
+### Impact
+- [ ] Breaking change
+- [ ] New feature
+- [ ] Bug fix
+- [x] Documentation only
+
 ## [2025-12-19 16:30] - Upgrade to firestoned/github-actions@v1.1.2
 
 **Author:** Erick Bourgeois

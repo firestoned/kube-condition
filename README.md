@@ -1,26 +1,52 @@
 # kube-condition
 
-<!-- CI/CD Status -->
+**Type-safe Kubernetes status conditions for Rust operators**
+
+## Project Status
+
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![GitHub Release](https://img.shields.io/github/v/release/firestoned/kube-condition)](https://github.com/firestoned/kube-condition/releases)
+[![Crates.io](https://img.shields.io/crates/v/kube-condition.svg)](https://crates.io/crates/kube-condition)
+[![Downloads](https://img.shields.io/crates/d/kube-condition.svg)](https://crates.io/crates/kube-condition)
+[![Last Commit](https://img.shields.io/github/last-commit/firestoned/kube-condition)](https://github.com/firestoned/kube-condition/commits/main)
+
+## CI/CD Status
+
 [![Main Branch CI](https://github.com/firestoned/kube-condition/actions/workflows/main.yaml/badge.svg)](https://github.com/firestoned/kube-condition/actions/workflows/main.yaml)
 [![Pull Request CI](https://github.com/firestoned/kube-condition/actions/workflows/pr.yaml/badge.svg)](https://github.com/firestoned/kube-condition/actions/workflows/pr.yaml)
 [![Security Scan](https://github.com/firestoned/kube-condition/actions/workflows/security-scan.yaml/badge.svg)](https://github.com/firestoned/kube-condition/actions/workflows/security-scan.yaml)
 [![SBOM Generation](https://github.com/firestoned/kube-condition/actions/workflows/sbom.yml/badge.svg)](https://github.com/firestoned/kube-condition/actions/workflows/sbom.yml)
 
-<!-- Code Quality -->
+## Code Quality & Testing
+
 [![codecov](https://codecov.io/gh/firestoned/kube-condition/branch/main/graph/badge.svg)](https://codecov.io/gh/firestoned/kube-condition)
+[![Documentation](https://docs.rs/kube-condition/badge.svg)](https://docs.rs/kube-condition)
 [![Rust Version](https://img.shields.io/badge/rust-1.70%2B-blue.svg)](https://www.rust-lang.org)
 
-<!-- Crates.io -->
-[![Crates.io](https://img.shields.io/crates/v/kube-condition.svg)](https://crates.io/crates/kube-condition)
-[![Documentation](https://docs.rs/kube-condition/badge.svg)](https://docs.rs/kube-condition)
-[![Downloads](https://img.shields.io/crates/d/kube-condition.svg)](https://crates.io/crates/kube-condition)
+## Technology & Compatibility
 
-<!-- License & Compliance -->
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![SBOM](https://img.shields.io/badge/SBOM-CycloneDX-blue)](https://github.com/firestoned/kube-condition/releases/latest)
-[![Signed Releases](https://img.shields.io/badge/Releases-Cosign%20Signed-green)](https://github.com/firestoned/kube-condition/releases/latest)
+[![Kubernetes](https://img.shields.io/badge/Kubernetes-326CE5?logo=kubernetes&logoColor=white)](https://kubernetes.io/)
+[![Rust](https://img.shields.io/badge/Rust-000000?logo=rust&logoColor=white)](https://www.rust-lang.org/)
+[![kube-rs](https://img.shields.io/badge/kube--rs-0.96-orange)](https://kube.rs/)
+[![Proc Macro](https://img.shields.io/badge/Proc%20Macro-derive-blueviolet)](https://doc.rust-lang.org/reference/procedural-macros.html)
 
-A complete example of using a custom derive macro to map Rust errors to Kubernetes status conditions in the bindy operator.
+## Security & Compliance
+
+[![SPDX](https://img.shields.io/badge/SPDX-MIT-blue)](https://spdx.org/licenses/MIT.html)
+[![SBOM](https://img.shields.io/badge/SBOM-CycloneDX-orange)](https://github.com/firestoned/kube-condition/releases/latest)
+[![Signed Releases](https://img.shields.io/badge/Cosign-Signed-purple)](https://github.com/firestoned/kube-condition/releases/latest)
+[![Security Audit](https://img.shields.io/badge/cargo--audit-passing-green)](https://github.com/firestoned/kube-condition/actions/workflows/security-scan.yaml)
+
+## Community & Support
+
+[![Issues](https://img.shields.io/github/issues/firestoned/kube-condition)](https://github.com/firestoned/kube-condition/issues)
+[![Pull Requests](https://img.shields.io/github/issues-pr/firestoned/kube-condition)](https://github.com/firestoned/kube-condition/pulls)
+[![Contributors](https://img.shields.io/github/contributors/firestoned/kube-condition)](https://github.com/firestoned/kube-condition/graphs/contributors)
+[![Stars](https://img.shields.io/github/stars/firestoned/kube-condition?style=social)](https://github.com/firestoned/kube-condition/stargazers)
+
+---
+
+A complete, production-ready library for mapping Rust errors to Kubernetes status conditions using a declarative derive macro. Built for Kubernetes operators with comprehensive supply chain security and compliance features.
 
 ## Architecture
 
