@@ -126,10 +126,7 @@ fn test_enum_with_data() {
     assert_eq!(info.reason, "StringError");
     assert_eq!(info.message, "error with string: test message");
 
-    let field_error = DataError::WithFields {
-        message: "field message".to_string(),
-        code: 42,
-    };
+    let field_error = DataError::WithFields { message: "field message".to_string(), code: 42 };
     let info = field_error.to_condition_info();
     assert_eq!(info.reason, "FieldError");
     assert_eq!(info.message, "error with fields: field message, code: 42");
