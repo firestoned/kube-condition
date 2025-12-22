@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added `--no-verify` to `package-derive` step to skip verification (dev-dependency on unpublished crate)
   - Added step to temporarily remove version from `kube-condition` dev-dependency during packaging (avoids crates.io dependency resolution)
   - Added debug steps to list artifact contents before signing (helps troubleshoot artifact path issues)
+  - Fixed artifact paths in signing steps to match actual uploaded directory structure (`target/package/` for crates, `<crate-name>/` for SBOMs)
   - 60-second wait after publishing `kube-condition-derive` for crates.io indexing
 
 ### Why
