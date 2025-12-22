@@ -57,6 +57,7 @@ jobs:
           package: kube-condition-derive
           workspace: true
           allow-dirty: true
+          cargo-args: '--no-verify'
 
       - name: Generate SBOM for kube-condition-derive
         uses: firestoned/github-actions/rust/generate-sbom@v1.3.0

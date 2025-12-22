@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added automatic version update step for `kube-condition-derive` dependency in packaging and publishing jobs
   - Updated all `firestoned/github-actions` references from `v1.2.4` to `v1.3.0`
   - Migrated to new composite actions: `rust/publish-crate@v1.3.0` and `rust/package-crate@v1.3.0`
+  - Added `--no-verify` to `package-derive` step to skip verification (dev-dependency on unpublished crate)
   - 60-second wait after publishing `kube-condition-derive` for crates.io indexing
 
 ### Why
