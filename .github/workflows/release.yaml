@@ -96,6 +96,11 @@ jobs:
           name: kube-condition-derive-package
           path: ./artifacts/kube-condition-derive
 
+      - name: List downloaded artifacts
+        run: |
+          echo "Contents of artifacts directory:"
+          find ./artifacts
+
       - name: Sign crate package with Cosign
         uses: firestoned/github-actions/security/cosign-sign@v1.3.0
         with:
@@ -210,6 +215,11 @@ jobs:
         with:
           name: kube-condition-package
           path: ./artifacts/kube-condition
+
+      - name: List downloaded artifacts
+        run: |
+          echo "Contents of artifacts directory:"
+          find ./artifacts
 
       - name: Sign crate package with Cosign
         uses: firestoned/github-actions/security/cosign-sign@v1.3.0
