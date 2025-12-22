@@ -135,6 +135,12 @@ jobs:
           echo "Updated workspace Cargo.toml to version ${{ needs.extract-version.outputs.version }}"
           grep '^version = ' Cargo.toml
 
+      - name: Remove kube-condition dev-dependency version (avoid crates.io check)
+        run: |
+          sed -i 's/kube-condition = { version = "[^"]*", path/kube-condition = { path/' kube-condition-derive/Cargo.toml
+          echo "Removed version from kube-condition dev-dependency"
+          grep 'kube-condition' kube-condition-derive/Cargo.toml || true
+
       - name: Setup Rust toolchain
         uses: firestoned/github-actions/rust/setup-rust-build@v1.3.0
         with:
@@ -147,6 +153,7 @@ jobs:
           workspace: true
           token: ${{ secrets.CARGO_REGISTRY_TOKEN }}
           allow-dirty: true
+          cargo-args: '--no-verify'
 
       - name: Wait for crate to be available on crates.io
         run: |
