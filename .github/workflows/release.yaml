@@ -293,6 +293,11 @@ jobs:
         with:
           pattern: '*-signed'
           path: ./artifacts
+      
+      - name: List downloaded artifacts
+        run: |
+          echo "Contents of artifacts directory:"
+          find ./artifacts
 
       - name: Organize release artifacts
         run: |
@@ -305,40 +310,54 @@ jobs:
               crate_name="${dir%-signed}"
               echo "Processing $crate_name..."
 
-              # Copy .crate file
-              if compgen -G "$dir/*.crate" > /dev/null; then
-                cp "$dir"/*.crate release/
+              # Copy .crate file from target/package/
+              if compgen -G "$dir/target/package/*.crate" > /dev/null; then
+                find "$dir/target/package" -name "*.crate" -not -name "*.bundle" -exec cp {} release/ \;
               fi
 
-              # Copy .crate signature bundle
-              if compgen -G "$dir/*.crate.bundle" > /dev/null; then
-                cp "$dir"/*.crate.bundle signatures/
+              # Copy .crate signature bundle from target/package/
+              if compgen -G "$dir/target/package/*.crate.bundle" > /dev/null; then
+                cp "$dir"/target/package/*.crate.bundle signatures/
               fi
 
-              # Copy SBOM
-              if compgen -G "$dir/*.cdx.json" > /dev/null; then
-                cp "$dir"/*.cdx.json "sboms/${crate_name}-sbom.json"
+              # Copy SBOM from crate-name subdirectory
+              if compgen -G "$dir/$crate_name/*.cdx.json" > /dev/null; then
+                find "$dir/$crate_name" -name "*.cdx.json" -not -name "*.bundle" -exec cp {} "sboms/${crate_name}-sbom.json" \;
               fi
 
-              # Copy SBOM signature bundle
-              if compgen -G "$dir/*.cdx.json.bundle" > /dev/null; then
-                cp "$dir"/*.cdx.json.bundle "signatures/${crate_name}-sbom.json.bundle"
+              # Copy SBOM signature bundle from crate-name subdirectory
+              if compgen -G "$dir/$crate_name/*.cdx.json.bundle" > /dev/null; then
+                cp "$dir/$crate_name"/*.cdx.json.bundle "signatures/${crate_name}-sbom.json.bundle"
               fi
             fi
           done
 
           # Generate SHA256 checksums
-          cd release
-          sha256sum *.crate > checksums.sha256
-          cd ../sboms
-          sha256sum *.json >> ../release/checksums.sha256
-          cd ../signatures
-          sha256sum *.bundle >> ../release/checksums.sha256
+          if compgen -G "release/*.crate" > /dev/null; then
+            cd release
+            sha256sum *.crate > checksums.sha256
+            cd ..
+          else
+            echo "No .crate files found"
+            exit 1
+          fi
+
+          if compgen -G "sboms/*.json" > /dev/null; then
+            cd sboms
+            sha256sum *.json >> ../release/checksums.sha256
+            cd ..
+          fi
+
+          if compgen -G "signatures/*.bundle" > /dev/null; then
+            cd signatures
+            sha256sum *.bundle >> ../release/checksums.sha256
+            cd ..
+          fi
 
           echo "Release artifacts prepared:"
-          ls -lh ../release/
-          ls -lh ../sboms/
-          ls -lh ../signatures/
+          ls -lh release/
+          ls -lh sboms/
+          ls -lh signatures/
 
       - name: Upload release assets
         uses: softprops/action-gh-release@v2

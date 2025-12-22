@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2025-12-21 19:30] - Fix Release Artifact Organization Script
+
+**Author:** Erick Bourgeois
+
+### Changed
+- `.github/workflows/release.yaml`: Fixed `upload-release-assets` job to correctly handle artifact directory structure
+  - Updated artifact copy commands to use correct paths: `target/package/` for `.crate` files, `<crate-name>/` for SBOMs
+  - Changed from direct glob pattern `$dir/*.crate` to `$dir/target/package/*.crate`
+  - Changed from direct glob pattern `$dir/*.cdx.json` to `$dir/$crate_name/*.cdx.json`
+  - Added error handling for missing artifacts (fail if no `.crate` files found)
+  - Fixed relative path issues in checksum generation (no more `../` prefixes)
+
+### Why
+The GitHub Actions artifact download preserves the full directory structure from the upload step. The previous script assumed a flat directory structure directly under `*-signed/`, but the actual structure is:
+- `.crate` files: `<crate>-signed/target/package/*.crate`
+- SBOM files: `<crate>-signed/<crate>/*.cdx.json`
+
+### Impact
+- [ ] Breaking change
+- [ ] New feature
+- [x] Bug fix
+- [ ] Documentation only
+
 ## [2025-12-21 19:00] - Add Version Requirements for Crates.io Publishing
 
 **Author:** Erick Bourgeois
