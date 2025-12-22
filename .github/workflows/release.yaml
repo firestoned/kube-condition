@@ -104,22 +104,22 @@ jobs:
       - name: Sign crate package with Cosign
         uses: firestoned/github-actions/security/cosign-sign@v1.3.0
         with:
-          artifact-path: ./artifacts/kube-condition-derive/kube-condition-derive-${{ needs.extract-version.outputs.version }}.crate
+          artifact-path: ./artifacts/kube-condition-derive/target/package/kube-condition-derive-${{ needs.extract-version.outputs.version }}.crate
 
       - name: Sign SBOM with Cosign
         uses: firestoned/github-actions/security/cosign-sign@v1.3.0
         with:
-          artifact-path: ./artifacts/kube-condition-derive/kube-condition-derive.cdx.json
+          artifact-path: ./artifacts/kube-condition-derive/kube-condition-derive/kube-condition-derive.cdx.json
 
       - name: Upload signed artifacts
         uses: actions/upload-artifact@v4
         with:
           name: kube-condition-derive-signed
           path: |
-            ./artifacts/kube-condition-derive/*.crate
-            ./artifacts/kube-condition-derive/*.crate.bundle
-            ./artifacts/kube-condition-derive/*.cdx.json
-            ./artifacts/kube-condition-derive/*.cdx.json.bundle
+            ./artifacts/kube-condition-derive/target/package/*.crate
+            ./artifacts/kube-condition-derive/target/package/*.crate.bundle
+            ./artifacts/kube-condition-derive/kube-condition-derive/*.cdx.json
+            ./artifacts/kube-condition-derive/kube-condition-derive/*.cdx.json.bundle
 
   publish-derive:
     name: Publish kube-condition-derive to crates.io
@@ -224,22 +224,22 @@ jobs:
       - name: Sign crate package with Cosign
         uses: firestoned/github-actions/security/cosign-sign@v1.3.0
         with:
-          artifact-path: ./artifacts/kube-condition/kube-condition-${{ needs.extract-version.outputs.version }}.crate
+          artifact-path: ./artifacts/kube-condition/target/package/kube-condition-${{ needs.extract-version.outputs.version }}.crate
 
       - name: Sign SBOM with Cosign
         uses: firestoned/github-actions/security/cosign-sign@v1.3.0
         with:
-          artifact-path: ./artifacts/kube-condition/kube-condition.cdx.json
+          artifact-path: ./artifacts/kube-condition/kube-condition/kube-condition.cdx.json
 
       - name: Upload signed artifacts
         uses: actions/upload-artifact@v4
         with:
           name: kube-condition-signed
           path: |
-            ./artifacts/kube-condition/*.crate
-            ./artifacts/kube-condition/*.crate.bundle
-            ./artifacts/kube-condition/*.cdx.json
-            ./artifacts/kube-condition/*.cdx.json.bundle
+            ./artifacts/kube-condition/target/package/*.crate
+            ./artifacts/kube-condition/target/package/*.crate.bundle
+            ./artifacts/kube-condition/kube-condition/*.cdx.json
+            ./artifacts/kube-condition/kube-condition/*.cdx.json.bundle
 
   publish-main:
     name: Publish kube-condition to crates.io
