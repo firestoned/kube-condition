@@ -24,7 +24,7 @@ syn.workspace = true
 darling.workspace = true
 
 [dev-dependencies]
-kube-condition = { path = "../kube-condition" }
+kube-condition = { version = "0.1.0", path = "../kube-condition" }
 thiserror.workspace = true
 trybuild.workspace = true
 k8s-openapi.workspace = true

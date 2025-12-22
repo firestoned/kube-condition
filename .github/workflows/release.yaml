@@ -26,23 +26,16 @@ jobs:
     steps:
       - name: Extract version information
         id: version
-        uses: firestoned/github-actions/versioning/extract-version@v1.2.4
+        uses: firestoned/github-actions/versioning/extract-version@v1.3.0
         with:
           repository: ${{ github.repository }}
           workflow-type: release
           release-tag: ${{ github.event.release.tag_name }}
 
-  package-crates:
-    name: Package Crates
+  package-derive:
+    name: Package kube-condition-derive
     runs-on: ubuntu-latest
     needs: extract-version
-    strategy:
-      matrix:
-        crate:
-          - name: kube-condition-derive
-            path: kube-condition-derive
-          - name: kube-condition
-            path: kube-condition
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -54,17 +47,19 @@ jobs:
           grep '^version = ' Cargo.toml
 
       - name: Setup Rust toolchain
-        uses: firestoned/github-actions/rust/setup-rust-build@v1.2.4
+        uses: firestoned/github-actions/rust/setup-rust-build@v1.3.0
         with:
           target: x86_64-unknown-linux-gnu
 
-      - name: Package crate
-        run: |
-          cd ${{ matrix.crate.path }}
-          cargo package --verbose --allow-dirty
+      - name: Package kube-condition-derive
+        uses: firestoned/github-actions/rust/package-crate@v1.3.0
+        with:
+          package: kube-condition-derive
+          workspace: true
+          allow-dirty: true
 
-      - name: Generate SBOM for crate
-        uses: firestoned/github-actions/rust/generate-sbom@v1.2.4
+      - name: Generate SBOM for kube-condition-derive
+        uses: firestoned/github-actions/rust/generate-sbom@v1.3.0
         with:
           format: json
           describe: crate
@@ -73,22 +68,17 @@ jobs:
       - name: Upload package and SBOM artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.crate.name }}-package
+          name: kube-condition-derive-package
           path: |
-            target/package/${{ matrix.crate.name}}-*.crate
+            target/package/kube-condition-derive-*.crate
             **/*.cdx.json
 
-  sign-artifacts:
-    name: Sign Crate Packages and SBOMs
+  sign-derive:
+    name: Sign kube-condition-derive Package and SBOM
     runs-on: ubuntu-latest
-    needs: [extract-version, package-crates]
+    needs: [extract-version, package-derive]
     permissions:
       id-token: write  # For keyless signing with Cosign
-    strategy:
-      matrix:
-        crate:
-          - name: kube-condition-derive
-          - name: kube-condition
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -96,42 +86,33 @@ jobs:
       - name: Download package artifact
         uses: actions/download-artifact@v4
         with:
-          name: ${{ matrix.crate.name }}-package
-          path: ./artifacts/${{ matrix.crate.name }}
+          name: kube-condition-derive-package
+          path: ./artifacts/kube-condition-derive
 
       - name: Sign crate package with Cosign
-        uses: firestoned/github-actions/security/cosign-sign@v1.2.4
+        uses: firestoned/github-actions/security/cosign-sign@v1.3.0
         with:
-          artifact-path: ./artifacts/${{ matrix.crate.name }}/${{ matrix.crate.name }}-${{ needs.extract-version.outputs.version }}.crate
+          artifact-path: ./artifacts/kube-condition-derive/kube-condition-derive-${{ needs.extract-version.outputs.version }}.crate
 
       - name: Sign SBOM with Cosign
-        uses: firestoned/github-actions/security/cosign-sign@v1.2.4
+        uses: firestoned/github-actions/security/cosign-sign@v1.3.0
         with:
-          artifact-path: ./artifacts/${{ matrix.crate.name }}/${{ matrix.crate.name }}.cdx.json
+          artifact-path: ./artifacts/kube-condition-derive/kube-condition-derive.cdx.json
 
       - name: Upload signed artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.crate.name }}-signed
+          name: kube-condition-derive-signed
           path: |
-            ./artifacts/${{ matrix.crate.name }}/*.crate
-            ./artifacts/${{ matrix.crate.name }}/*.crate.bundle
-            ./artifacts/${{ matrix.crate.name }}/*.cdx.json
-            ./artifacts/${{ matrix.crate.name }}/*.cdx.json.bundle
+            ./artifacts/kube-condition-derive/*.crate
+            ./artifacts/kube-condition-derive/*.crate.bundle
+            ./artifacts/kube-condition-derive/*.cdx.json
+            ./artifacts/kube-condition-derive/*.cdx.json.bundle
 
-  publish-crates:
-    name: Publish to crates.io
+  publish-derive:
+    name: Publish kube-condition-derive to crates.io
     runs-on: ubuntu-latest
-    needs: [extract-version, sign-artifacts]
-    # Publish crates in dependency order
-    strategy:
-      max-parallel: 1  # Ensure sequential publishing
-      matrix:
-        crate:
-          - name: kube-condition-derive
-            path: kube-condition-derive
-          - name: kube-condition
-            path: kube-condition
+    needs: [extract-version, sign-derive]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -143,25 +124,143 @@ jobs:
           grep '^version = ' Cargo.toml
 
       - name: Setup Rust toolchain
-        uses: firestoned/github-actions/rust/setup-rust-build@v1.2.4
+        uses: firestoned/github-actions/rust/setup-rust-build@v1.3.0
         with:
           target: x86_64-unknown-linux-gnu
 
-      - name: Publish ${{ matrix.crate.name }} to crates.io
-        run: |
-          cd ${{ matrix.crate.path }}
-          cargo publish --token ${{ secrets.CARGO_REGISTRY_TOKEN }} --allow-dirty
+      - name: Publish kube-condition-derive to crates.io
+        uses: firestoned/github-actions/rust/publish-crate@v1.3.0
+        with:
+          package: kube-condition-derive
+          workspace: true
+          token: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+          allow-dirty: true
 
       - name: Wait for crate to be available on crates.io
-        if: matrix.crate.name == 'kube-condition-derive'
         run: |
           echo "Waiting 60 seconds for kube-condition-derive to be indexed on crates.io..."
           sleep 60
 
+  package-main:
+    name: Package kube-condition
+    runs-on: ubuntu-latest
+    needs: [extract-version, publish-derive]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Update workspace version in Cargo.toml
+        run: |
+          sed -i 's/^version = ".*"/version = "${{ needs.extract-version.outputs.version }}"/' Cargo.toml
+          echo "Updated workspace Cargo.toml to version ${{ needs.extract-version.outputs.version }}"
+          grep '^version = ' Cargo.toml
+
+      - name: Update kube-condition-derive dependency version
+        run: |
+          sed -i 's/kube-condition-derive = { version = "[^"]*"/kube-condition-derive = { version = "${{ needs.extract-version.outputs.version }}"/' kube-condition/Cargo.toml
+          echo "Updated kube-condition/Cargo.toml dependency version"
+          grep 'kube-condition-derive' kube-condition/Cargo.toml
+
+      - name: Setup Rust toolchain
+        uses: firestoned/github-actions/rust/setup-rust-build@v1.3.0
+        with:
+          target: x86_64-unknown-linux-gnu
+
+      - name: Package kube-condition
+        uses: firestoned/github-actions/rust/package-crate@v1.3.0
+        with:
+          package: kube-condition
+          workspace: true
+          allow-dirty: true
+
+      - name: Generate SBOM for kube-condition
+        uses: firestoned/github-actions/rust/generate-sbom@v1.3.0
+        with:
+          format: json
+          describe: crate
+          workspace: true
+
+      - name: Upload package and SBOM artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: kube-condition-package
+          path: |
+            target/package/kube-condition-*.crate
+            **/*.cdx.json
+
+  sign-main:
+    name: Sign kube-condition Package and SBOM
+    runs-on: ubuntu-latest
+    needs: [extract-version, package-main]
+    permissions:
+      id-token: write  # For keyless signing with Cosign
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download package artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: kube-condition-package
+          path: ./artifacts/kube-condition
+
+      - name: Sign crate package with Cosign
+        uses: firestoned/github-actions/security/cosign-sign@v1.3.0
+        with:
+          artifact-path: ./artifacts/kube-condition/kube-condition-${{ needs.extract-version.outputs.version }}.crate
+
+      - name: Sign SBOM with Cosign
+        uses: firestoned/github-actions/security/cosign-sign@v1.3.0
+        with:
+          artifact-path: ./artifacts/kube-condition/kube-condition.cdx.json
+
+      - name: Upload signed artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: kube-condition-signed
+          path: |
+            ./artifacts/kube-condition/*.crate
+            ./artifacts/kube-condition/*.crate.bundle
+            ./artifacts/kube-condition/*.cdx.json
+            ./artifacts/kube-condition/*.cdx.json.bundle
+
+  publish-main:
+    name: Publish kube-condition to crates.io
+    runs-on: ubuntu-latest
+    needs: [extract-version, sign-main]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Update workspace version in Cargo.toml
+        run: |
+          sed -i 's/^version = ".*"/version = "${{ needs.extract-version.outputs.version }}"/' Cargo.toml
+          echo "Updated workspace Cargo.toml to version ${{ needs.extract-version.outputs.version }}"
+          grep '^version = ' Cargo.toml
+
+      - name: Update kube-condition-derive dependency version
+        run: |
+          sed -i 's/kube-condition-derive = { version = "[^"]*"/kube-condition-derive = { version = "${{ needs.extract-version.outputs.version }}"/' kube-condition/Cargo.toml
+          echo "Updated kube-condition/Cargo.toml dependency version"
+          grep 'kube-condition-derive' kube-condition/Cargo.toml
+
+      - name: Setup Rust toolchain
+        uses: firestoned/github-actions/rust/setup-rust-build@v1.3.0
+        with:
+          target: x86_64-unknown-linux-gnu
+
+      - name: Publish kube-condition to crates.io
+        uses: firestoned/github-actions/rust/publish-crate@v1.3.0
+        with:
+          package: kube-condition
+          workspace: true
+          token: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+          allow-dirty: true
+
   upload-release-assets:
     name: Upload Release Assets
     runs-on: ubuntu-latest
-    needs: [extract-version, sign-artifacts]
+    needs: [extract-version, sign-derive, sign-main]
     permissions:
       contents: write
     steps:
@@ -235,7 +334,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run security scan
-        uses: firestoned/github-actions/rust/security-scan@v1.2.4
+        uses: firestoned/github-actions/rust/security-scan@v1.3.0
         with:
           cargo-audit-version: '0.22.0'
           upload-artifact-name: release-audit-${{ needs.extract-version.outputs.version }}

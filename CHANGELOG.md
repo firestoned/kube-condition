@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2025-12-21 19:00] - Add Version Requirements for Crates.io Publishing
+
+**Author:** Erick Bourgeois
+
+### Changed
+- `kube-condition/Cargo.toml`: Added `version = "0.1.0"` to `kube-condition-derive` dependency to support crates.io publishing
+- `kube-condition-derive/Cargo.toml`: Added `version = "0.1.0"` to `kube-condition` dev-dependency (required for integration tests)
+- `.github/workflows/release.yaml`:
+  - **MAJOR**: Restructured workflow from matrix-based to sequential job chain to handle dependency publishing order
+  - New job dependency chain: `package-derive` → `sign-derive` → `publish-derive` → `package-main` → `sign-main` → `publish-main`
+  - This ensures `kube-condition-derive` is published to crates.io BEFORE `kube-condition` is packaged (avoiding dependency resolution errors)
+  - Added automatic version update step for `kube-condition-derive` dependency in packaging and publishing jobs
+  - Updated all `firestoned/github-actions` references from `v1.2.4` to `v1.3.0`
+  - Migrated to new composite actions: `rust/publish-crate@v1.3.0` and `rust/package-crate@v1.3.0`
+  - 60-second wait after publishing `kube-condition-derive` for crates.io indexing
+
+### Why
+When publishing to crates.io, all dependencies must specify a version number, not just a path. The `path` specification is automatically stripped during packaging, and the published package will use the version from crates.io.
+
+### Impact
+- [x] Documentation only
+- [ ] Breaking change
+- [ ] New feature
+- [ ] Bug fix
+
+### Publishing Order
+Due to workspace dependency structure:
+1. Publish `kube-condition-derive` first (no runtime dependency on kube-condition)
+2. Publish `kube-condition` second (depends on kube-condition-derive from crates.io)
+
 ### Added
 - Initial project structure for kube-condition library
 - `kube-condition` runtime crate with StatusCondition trait
@@ -25,6 +55,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - All security-scan action calls now specify `cargo-audit-version: '0.22.0'` to support CVSS 4.0 advisories
 - README.md: Added comprehensive badges grouped by CI/CD Status, Code Quality, Crates.io, and License & Compliance
 - README.md: Updated all examples to use `condition_type` instead of `type`
+
+## [2025-12-21 12:30] - Fix Release Workflow for Workspace Version Management
+
+**Author:** Erick Bourgeois
+
+### Changed
+- `.github/workflows/release.yaml`: Fixed `package-crates` and `publish-crates` jobs to work with workspace version inheritance
+- Changed from `cd ${{ matrix.crate.path }} && cargo package` to `cargo package --package ${{ matrix.crate.name }}`
+- Changed from `cd ${{ matrix.crate.path }} && cargo publish` to `cargo publish --package ${{ matrix.crate.name }}`
+
+### Why
+**Workspace Version Compatibility:**
+- The crates use `version.workspace = true` which requires commands to be run from the workspace root
+- Running `cargo package` or `cargo publish` from individual crate directories fails because the workspace version is not accessible
+- Using `--package <name>` flag from the workspace root allows cargo to properly resolve workspace-inherited fields
+
+### Impact
+- [ ] Breaking change
+- [ ] New feature
+- [x] Bug fix
+- [ ] Documentation only
 
 ## [2025-12-21 12:15] - Add Multi-Architecture Testing to Main Workflow
 
