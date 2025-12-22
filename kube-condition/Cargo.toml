@@ -23,9 +23,8 @@ thiserror.workspace = true
 tracing.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-
 # Re-export the derive macro
-kube-condition-derive = { path = "../kube-condition-derive", optional = true }
+kube-condition-derive = { version = "0.1.0", path = "../kube-condition-derive", optional = true }
 
 [features]
 default = ["derive"]
